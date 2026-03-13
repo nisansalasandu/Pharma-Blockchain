@@ -1,0 +1,31 @@
+{
+  "network": "ganache",
+  "chainId": "1337",
+  "deploymentBlock": 33,
+  "deploymentTime": "2026-02-16T09:04:12.226Z",
+  "contracts": {
+    "RoleAccessControl": "0xae5EFBA9DE36d3d7206d18d10572F3a3aE601c1D",
+    "TraceabilityContract": "0x4Ac61aebF5A2391223559b04D575Ef8346CaC6a9",
+    "OrderingContract": "0x3c8A67F235C57e2Cd2ac0dAb9323697Bdb1061d6",
+    "PredictiveAIOracle": "0xc7E3Ce607EE219F6D2C55569A09Bb0Dd13592Fa1",
+    "ConsensusAdapter": "0x5748E080F968dbd1F6F8fced8c274D0e4db8E2C9"
+  },
+  "accounts": {
+    "NMRA": "0x5A41510CFa40fe9b822cE5Fe8a2069918289225f",
+    "SPC": "0xc61552c330c0801C27Af3b41d6b517C9C9D20b08",
+    "MSD": "0x40c97365dFb090f047FD7A9a280131e54b6516d7",
+    "Manufacturer1": "0x83bB0bb9ac5bf027664f42ad9f00F8fF6EaB719C",
+    "Manufacturer2": "0xdb23BBb4d6B7D59185ffF639755aD9437a01133E",
+    "Importer": "0xbde66C3A10D24710907ee6F7d38883C96945F80c",
+    "Wholesaler": "0x074a844326f93E95166aF49b909546d2D8DDCe9d",
+    "Pharmacy": "0x2a8648E697C5466D56aC2fDDe381bB3dff29c14e",
+    "Hospital": "0xAB23e7936424bdb0F7D79F55979880b0C0460aa7",
+    "Transporter": "0x0fD612332327b5809E34eF6d0Eb06304100aACB6"
+  },
+  "oracleOperator": "0x5A41510CFa40fe9b822cE5Fe8a2069918289225f",
+  "validators": {
+    "NMRA": "0x5A41510CFa40fe9b822cE5Fe8a2069918289225f",
+    "SPC": "0xc61552c330c0801C27Af3b41d6b517C9C9D20b08",
+    "MSD": "0x40c97365dFb090f047FD7A9a280131e54b6516d7"
+  }
+}

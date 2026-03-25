@@ -1,5 +1,5 @@
 // frontend/src/App.jsx
-// Sri Lankan Pharmaceutical Blockchain — Phase 2 React Frontend
+// Sri Lankan Pharmaceutical Blockchain — React Frontend
 // 
 // Prerequisites:
 //   cd frontend

@@ -1,9 +1,0 @@
-{
-  "RoleAccessControl": "0xae5EFBA9DE36d3d7206d18d10572F3a3aE601c1D",
-  "TraceabilityContract": "0x4Ac61aebF5A2391223559b04D575Ef8346CaC6a9",
-  "OrderingContract": "0x3c8A67F235C57e2Cd2ac0dAb9323697Bdb1061d6",
-  "PredictiveAIOracle": "0xc7E3Ce607EE219F6D2C55569A09Bb0Dd13592Fa1",
-  "ConsensusAdapter": "0x5748E080F968dbd1F6F8fced8c274D0e4db8E2C9",
-  "networkId": 1337,
-  "rpcUrl": "http://127.0.0.1:7545"
-}

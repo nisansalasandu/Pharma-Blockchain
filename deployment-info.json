@@ -1,9 +1,0 @@
-{
-  "contractName": "HelloPharmaChain",
-  "address": "0xD6192bE3Ac05e196821a8bD3782370795F403a48",
-  "deployer": "0x5A41510CFa40fe9b822cE5Fe8a2069918289225f",
-  "network": "ganache",
-  "chainId": "1337",
-  "deploymentTime": "2026-02-12T10:33:28.959Z",
-  "blockNumber": 5
-}

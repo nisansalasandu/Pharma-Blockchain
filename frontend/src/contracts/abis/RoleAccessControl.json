@@ -1,21 +1,38 @@
 [
   {
-    "inputs": [{"internalType": "address","name": "account","type": "address"}],
-    "name": "getMemberInfo",
+    "inputs": [{"internalType": "address", "name": "_account", "type": "address"}],
+    "name": "getMember",
     "outputs": [
-      {"internalType": "uint8","name": "role","type": "uint8"},
-      {"internalType": "string","name": "name","type": "string"},
-      {"internalType": "bool","name": "isActive","type": "bool"}
+      {"internalType": "bytes32", "name": "role", "type": "bytes32"},
+      {"internalType": "string",  "name": "orgName", "type": "string"},
+      {"internalType": "bool",    "name": "isActive", "type": "bool"},
+      {"internalType": "address", "name": "grantedBy", "type": "address"},
+      {"internalType": "uint256", "name": "grantedAt", "type": "uint256"},
+      {"internalType": "uint256", "name": "licenseExpiry", "type": "uint256"}
     ],
     "stateMutability": "view",
     "type": "function"
   },
   {
+    "inputs": [{"internalType": "bytes32", "name": "_role", "type": "bytes32"}],
+    "name": "roleName",
+    "outputs": [{"internalType": "string", "name": "", "type": "string"}],
+    "stateMutability": "pure",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "totalMembers",
+    "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
     "inputs": [
-      {"internalType": "address","name": "account","type": "address"},
-      {"internalType": "uint8","name": "role","type": "uint8"},
-      {"internalType": "string","name": "name","type": "string"},
-      {"internalType": "uint256","name": "licenseNumber","type": "uint256"}
+      {"internalType": "address",  "name": "_account", "type": "address"},
+      {"internalType": "bytes32",  "name": "_role",    "type": "bytes32"},
+      {"internalType": "string",   "name": "_orgName", "type": "string"},
+      {"internalType": "uint256",  "name": "_expiry",  "type": "uint256"}
     ],
     "name": "grantRole",
     "outputs": [],
@@ -23,51 +40,96 @@
     "type": "function"
   },
   {
+    "inputs": [{"internalType": "address", "name": "_account", "type": "address"}],
+    "name": "revokeRole",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
     "inputs": [],
     "name": "ROLE_NMRA",
-    "outputs": [{"internalType": "uint8","name": "","type": "uint8"}],
+    "outputs": [{"internalType": "bytes32", "name": "", "type": "bytes32"}],
     "stateMutability": "view",
     "type": "function"
   },
   {
     "inputs": [],
     "name": "ROLE_SPC",
-    "outputs": [{"internalType": "uint8","name": "","type": "uint8"}],
+    "outputs": [{"internalType": "bytes32", "name": "", "type": "bytes32"}],
     "stateMutability": "view",
     "type": "function"
   },
   {
     "inputs": [],
     "name": "ROLE_MSD",
-    "outputs": [{"internalType": "uint8","name": "","type": "uint8"}],
+    "outputs": [{"internalType": "bytes32", "name": "", "type": "bytes32"}],
     "stateMutability": "view",
     "type": "function"
   },
   {
     "inputs": [],
     "name": "ROLE_MANUFACTURER",
-    "outputs": [{"internalType": "uint8","name": "","type": "uint8"}],
+    "outputs": [{"internalType": "bytes32", "name": "", "type": "bytes32"}],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "ROLE_IMPORTER",
+    "outputs": [{"internalType": "bytes32", "name": "", "type": "bytes32"}],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "ROLE_WHOLESALER",
+    "outputs": [{"internalType": "bytes32", "name": "", "type": "bytes32"}],
     "stateMutability": "view",
     "type": "function"
   },
   {
     "inputs": [],
     "name": "ROLE_PHARMACY",
-    "outputs": [{"internalType": "uint8","name": "","type": "uint8"}],
+    "outputs": [{"internalType": "bytes32", "name": "", "type": "bytes32"}],
     "stateMutability": "view",
     "type": "function"
   },
   {
     "inputs": [],
     "name": "ROLE_HOSPITAL",
-    "outputs": [{"internalType": "uint8","name": "","type": "uint8"}],
+    "outputs": [{"internalType": "bytes32", "name": "", "type": "bytes32"}],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "ROLE_TRANSPORTER",
+    "outputs": [{"internalType": "bytes32", "name": "", "type": "bytes32"}],
     "stateMutability": "view",
     "type": "function"
   },
   {
     "inputs": [],
     "name": "ROLE_PATIENT",
-    "outputs": [{"internalType": "uint8","name": "","type": "uint8"}],
+    "outputs": [{"internalType": "bytes32", "name": "", "type": "bytes32"}],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [{"internalType": "address", "name": "_account", "type": "address"}],
+    "name": "getRole",
+    "outputs": [{"internalType": "bytes32", "name": "", "type": "bytes32"}],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {"internalType": "address",  "name": "_account", "type": "address"},
+      {"internalType": "bytes32",  "name": "_role",    "type": "bytes32"}
+    ],
+    "name": "isActiveRole",
+    "outputs": [{"internalType": "bool", "name": "", "type": "bool"}],
     "stateMutability": "view",
     "type": "function"
   }

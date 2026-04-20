@@ -4,39 +4,49 @@ import { getCurrentAccount } from '../../utils/web3';
 import LoadingSpinner from '../../components/LoadingSpinner';
 
 const ManufacturerDashboard = () => {
-  const [batches, setBatches] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [showMintForm, setShowMintForm] = useState(false);
+  const [batches,       setBatches]       = useState([]);
+  const [loading,       setLoading]       = useState(true);
+  const [submitting,    setSubmitting]     = useState(false);
+  const [showMintForm,  setShowMintForm]   = useState(false);
+  const [txMessage,     setTxMessage]      = useState('');
 
-  // Form state
   const [formData, setFormData] = useState({
-    medicineName: '',
-    batchNumber: '',
-    genericName: '',
-    quantity: '',
-    expiryDate: '',
+    medicineName:      '',
+    batchNumber:       '',
+    genericName:       '',
+    quantity:          '',
+    expiryDate:        '',
     coldChainRequired: false,
-    minTemp: '0',
-    maxTemp: '3500',
-    qrPayload: '',
-    ipfsCert: ''
+    minTemp:           '200',   // 2°C × 100
+    maxTemp:           '800',   // 8°C × 100
+    qrPayload:         '',
+    ipfsCert:          ''
   });
 
   useEffect(() => {
     loadBatches();
   }, []);
 
+  // ── Load all batches ─────────────────────────────────────────────────────
   const loadBatches = async () => {
     try {
       const contract = getTraceabilityContract();
+      const account  = await getCurrentAccount();
+
+      // Use getHolderBatches to only fetch this manufacturer's batches
+      // (falls back to scanning all if needed)
       const total = await contract.methods.totalBatches().call();
-      
+
       const batchList = [];
-      for (let i = 1; i <= total; i++) {
+      for (let i = 1; i <= Number(total); i++) {
+        // getBatch returns the full Batch struct as a tuple
         const batch = await contract.methods.getBatch(i).call();
-        batchList.push({ id: i, ...batch });
+        // Only show batches this manufacturer minted
+        if (batch.manufacturer.toLowerCase() === account.toLowerCase()) {
+          batchList.push({ id: i, ...batch });
+        }
       }
-      
+
       setBatches(batchList);
     } catch (error) {
       console.error('Error loading batches:', error);
@@ -53,55 +63,67 @@ const ManufacturerDashboard = () => {
     }));
   };
 
+  // ── Mint batch ───────────────────────────────────────────────────────────
   const handleMintBatch = async (e) => {
     e.preventDefault();
-    setLoading(true);
+    setSubmitting(true);
+    setTxMessage('');
 
     try {
       const contract = getTraceabilityContract();
-      const account = await getCurrentAccount();
+      const account  = await getCurrentAccount();
 
-      // Convert date to Unix timestamp
+      // Convert date string to Unix timestamp
       const expiryTimestamp = Math.floor(new Date(formData.expiryDate).getTime() / 1000);
 
-      const batchData = {
-        medicineName: formData.medicineName,
-        batchNumber: formData.batchNumber,
-        genericName: formData.genericName,
-        quantity: formData.quantity,
-        expiryDate: expiryTimestamp,
+      if (expiryTimestamp <= Math.floor(Date.now() / 1000)) {
+        setTxMessage('❌ Expiry date must be in the future.');
+        return;
+      }
+
+      // mintBatch takes a BatchParams struct (tuple)
+      // Fields: medicineName, batchNumber, genericName, quantity,
+      //         expiryDate, coldChainRequired, minTemp, maxTemp,
+      //         qrPayload, ipfsCert
+      const batchParams = {
+        medicineName:      formData.medicineName,
+        batchNumber:       formData.batchNumber,
+        genericName:       formData.genericName || formData.medicineName,
+        quantity:          Number(formData.quantity),
+        expiryDate:        expiryTimestamp,
         coldChainRequired: formData.coldChainRequired,
-        minTemp: formData.minTemp,
-        maxTemp: formData.maxTemp,
-        qrPayload: formData.qrPayload || `QR-${formData.batchNumber}`,
-        ipfsCert: formData.ipfsCert || `ipfs://QmExample${Date.now()}`
+        minTemp:           formData.coldChainRequired ? Number(formData.minTemp) : 0,
+        maxTemp:           formData.coldChainRequired ? Number(formData.maxTemp) : 3500,
+        qrPayload:         formData.qrPayload  || `QR-${formData.batchNumber}-${Date.now()}`,
+        ipfsCert:          formData.ipfsCert   || `ipfs://QmExample${Date.now()}`
       };
 
-      await contract.methods.mintBatch(batchData).send({ from: account });
+      setTxMessage('⏳ Minting batch on blockchain...');
 
-      alert('✅ Batch minted successfully!');
+      await contract.methods.mintBatch(batchParams).send({ from: account });
+
+      setTxMessage('✅ Batch minted successfully!');
       setShowMintForm(false);
-      loadBatches();
-      
-      // Reset form
       setFormData({
-        medicineName: '',
-        batchNumber: '',
-        genericName: '',
-        quantity: '',
-        expiryDate: '',
+        medicineName:      '',
+        batchNumber:       '',
+        genericName:       '',
+        quantity:          '',
+        expiryDate:        '',
         coldChainRequired: false,
-        minTemp: '0',
-        maxTemp: '3500',
-        qrPayload: '',
-        ipfsCert: ''
+        minTemp:           '200',
+        maxTemp:           '800',
+        qrPayload:         '',
+        ipfsCert:          ''
       });
+      loadBatches();
 
     } catch (error) {
       console.error('Error minting batch:', error);
-      alert('❌ Failed to mint batch: ' + error.message);
+      const reason = error?.data?.message || error?.message || 'Unknown error';
+      setTxMessage('❌ Failed to mint: ' + reason);
     } finally {
-      setLoading(false);
+      setSubmitting(false);
     }
   };
 
@@ -113,18 +135,20 @@ const ManufacturerDashboard = () => {
     <div className="dashboard">
       <div className="dashboard-header">
         <h1>👨‍🏭 Manufacturer Dashboard</h1>
-        <button 
-          onClick={() => setShowMintForm(!showMintForm)}
+        <button
+          onClick={() => { setShowMintForm(!showMintForm); setTxMessage(''); }}
           className="primary-button"
         >
           {showMintForm ? '❌ Cancel' : '➕ Mint New Batch'}
         </button>
       </div>
 
+      {/* ── Mint Form ── */}
       {showMintForm && (
         <div className="card">
           <h2>Mint New Medicine Batch</h2>
           <form onSubmit={handleMintBatch} className="form">
+
             <div className="form-row">
               <div className="form-group">
                 <label>Medicine Name *</label>
@@ -159,7 +183,7 @@ const ManufacturerDashboard = () => {
                   name="genericName"
                   value={formData.genericName}
                   onChange={handleInputChange}
-                  placeholder="e.g., Acetaminophen"
+                  placeholder="e.g., Acetaminophen (optional)"
                 />
               </div>
 
@@ -171,6 +195,7 @@ const ManufacturerDashboard = () => {
                   value={formData.quantity}
                   onChange={handleInputChange}
                   placeholder="e.g., 10000"
+                  min="1"
                   required
                 />
               </div>
@@ -188,8 +213,8 @@ const ManufacturerDashboard = () => {
                 />
               </div>
 
-              <div className="form-group">
-                <label className="checkbox-label">
+              <div className="form-group" style={{ display: 'flex', alignItems: 'center', paddingTop: '24px' }}>
+                <label className="checkbox-label" style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
                   <input
                     type="checkbox"
                     name="coldChainRequired"
@@ -204,39 +229,84 @@ const ManufacturerDashboard = () => {
             {formData.coldChainRequired && (
               <div className="form-row">
                 <div className="form-group">
-                  <label>Min Temperature (°C × 100)</label>
+                  <label>Min Temperature (integer °C × 100)</label>
                   <input
                     type="number"
                     name="minTemp"
                     value={formData.minTemp}
                     onChange={handleInputChange}
-                    placeholder="e.g., 200 for 2°C"
+                    placeholder="200 = 2°C"
                   />
-                  <small>Enter 200 for 2°C, 800 for 8°C</small>
+                  <small style={{ color: '#636e72' }}>Enter 200 for 2°C, 800 for 8°C</small>
                 </div>
 
                 <div className="form-group">
-                  <label>Max Temperature (°C × 100)</label>
+                  <label>Max Temperature (integer °C × 100)</label>
                   <input
                     type="number"
                     name="maxTemp"
                     value={formData.maxTemp}
                     onChange={handleInputChange}
-                    placeholder="e.g., 800 for 8°C"
+                    placeholder="800 = 8°C"
                   />
                 </div>
               </div>
             )}
 
-            <button type="submit" className="submit-button" disabled={loading}>
-              {loading ? '⏳ Minting...' : '🏭 Mint Batch'}
+            <div className="form-group">
+              <label>QR Payload (optional — auto-generated if blank)</label>
+              <input
+                type="text"
+                name="qrPayload"
+                value={formData.qrPayload}
+                onChange={handleInputChange}
+                placeholder="e.g., PCM-2024-001-LOT"
+              />
+            </div>
+
+            <div className="form-group">
+              <label>IPFS Certificate Hash (optional — auto-generated if blank)</label>
+              <input
+                type="text"
+                name="ipfsCert"
+                value={formData.ipfsCert}
+                onChange={handleInputChange}
+                placeholder="e.g., ipfs://QmXyz..."
+              />
+            </div>
+
+            <button type="submit" className="submit-button" disabled={submitting}>
+              {submitting ? '⏳ Minting...' : '🏭 Mint Batch'}
             </button>
           </form>
+
+          {txMessage && (
+            <div
+              className="info-box"
+              style={{
+                marginTop: '12px',
+                background: txMessage.startsWith('✅') ? '#e8f5e9'
+                          : txMessage.startsWith('⏳') ? '#fff3e0' : '#fdecea',
+                borderRadius: '8px',
+                padding: '12px',
+                fontSize: '14px'
+              }}
+            >
+              {txMessage}
+            </div>
+          )}
         </div>
       )}
 
+      {/* ── Batches Table ── */}
       <div className="card">
-        <h2>My Manufactured Batches ({batches.length})</h2>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <h2>My Manufactured Batches ({batches.length})</h2>
+          <button className="primary-button" onClick={loadBatches} style={{ fontSize: '12px', padding: '6px 14px' }}>
+            🔄 Refresh
+          </button>
+        </div>
+
         <div className="table-container">
           <table>
             <thead>
@@ -244,6 +314,7 @@ const ManufacturerDashboard = () => {
                 <th>Batch ID</th>
                 <th>Medicine Name</th>
                 <th>Batch Number</th>
+                <th>Quantity</th>
                 <th>Current Holder</th>
                 <th>Status</th>
                 <th>Recalled</th>
@@ -252,8 +323,8 @@ const ManufacturerDashboard = () => {
             <tbody>
               {batches.length === 0 ? (
                 <tr>
-                  <td colSpan="6" style={{textAlign: 'center'}}>
-                    No batches minted yet
+                  <td colSpan="7" style={{ textAlign: 'center', color: '#b2bec3' }}>
+                    No batches minted yet. Click "Mint New Batch" to get started.
                   </td>
                 </tr>
               ) : (
@@ -262,17 +333,20 @@ const ManufacturerDashboard = () => {
                     <td>#{batch.id}</td>
                     <td>{batch.medicineName}</td>
                     <td>{batch.batchNumber}</td>
-                    <td className="address-cell">{batch.currentHolder}</td>
+                    <td>{batch.quantity?.toString()}</td>
+                    <td className="address-cell" style={{ fontSize: '11px', color: '#636e72' }}>
+                      {batch.currentHolder?.slice(0, 8)}...{batch.currentHolder?.slice(-6)}
+                    </td>
                     <td>
                       <span className={`status-badge status-${batch.status}`}>
-                        {getStatusName(batch.status)}
+                        {getBatchStatus(Number(batch.status))}
                       </span>
                     </td>
                     <td>
                       {batch.isRecalled ? (
-                        <span className="recalled-badge">⚠️ RECALLED</span>
+                        <span className="recalled-badge" style={{ color: '#dc2626', fontWeight: 700 }}>⚠️ RECALLED</span>
                       ) : (
-                        <span className="active-badge">✅ Active</span>
+                        <span className="active-badge" style={{ color: '#059669' }}>✅ Active</span>
                       )}
                     </td>
                   </tr>
@@ -286,14 +360,15 @@ const ManufacturerDashboard = () => {
   );
 };
 
-const getStatusName = (status) => {
+const getBatchStatus = (status) => {
   const statuses = {
     0: 'Manufactured',
     1: 'In Transit',
     2: 'At Warehouse',
     3: 'At Pharmacy',
     4: 'At Hospital',
-    5: 'Dispensed'
+    5: 'Dispensed',
+    6: 'Recalled'
   };
   return statuses[status] || 'Unknown';
 };

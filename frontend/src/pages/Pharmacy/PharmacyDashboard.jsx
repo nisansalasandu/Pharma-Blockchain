@@ -1,39 +1,46 @@
 import { useState, useEffect } from 'react';
 import { getOrderingContract } from '../../utils/contracts';
 import { getCurrentAccount } from '../../utils/web3';
-import addresses from '../../contracts/addresses.json';
 import LoadingSpinner from '../../components/LoadingSpinner';
 
+// ── Actual SPC account address from your deployment ──────────────────────────
+// Account 1 in Ganache = SPC — State Pharmaceuticals Corporation
+const SPC_ADDRESS = '0x3eA889EfFb3235aEF9a99681466F4dB8298dF13F';
+
 const PharmacyDashboard = () => {
-  const [orders, setOrders] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [showOrderForm, setShowOrderForm] = useState(false);
+  const [orders,          setOrders]          = useState([]);
+  const [loading,         setLoading]         = useState(true);
+  const [submitting,      setSubmitting]       = useState(false);
+  const [showOrderForm,   setShowOrderForm]    = useState(false);
+  const [txMessage,       setTxMessage]        = useState('');
 
   const [formData, setFormData] = useState({
     medicineName: '',
-    quantity: '',
-    notes: ''
+    genericName:  '',
+    quantity:     '',
+    notes:        ''
   });
 
   useEffect(() => {
     loadOrders();
   }, []);
 
+  // ── Load orders placed by this pharmacy ─────────────────────────────────
   const loadOrders = async () => {
     try {
       const contract = getOrderingContract();
-      const account = await getCurrentAccount();
-      const total = await contract.methods.totalOrders().call();
-      
-      const orderList = [];
-      for (let i = 1; i <= total; i++) {
-        const order = await contract.methods.getOrder(i).call();
-        // Only show orders placed by this pharmacy
-        if (order.placer.toLowerCase() === account.toLowerCase()) {
-          orderList.push({ id: i, ...order });
-        }
-      }
-      
+      const account  = await getCurrentAccount();
+
+      // Use getOrdersByPlacer for efficiency — no need to scan all orders
+      const orderIds = await contract.methods.getOrdersByPlacer(account).call();
+
+      const orderList = await Promise.all(
+        orderIds.map(async (id) => {
+          const order = await contract.methods.getOrder(id).call();
+          return { id: Number(id), ...order };
+        })
+      );
+
       setOrders(orderList);
     } catch (error) {
       console.error('Error loading orders:', error);
@@ -44,47 +51,48 @@ const PharmacyDashboard = () => {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
+    setFormData(prev => ({ ...prev, [name]: value }));
   };
 
+  // ── Place order ──────────────────────────────────────────────────────────
   const handlePlaceOrder = async (e) => {
     e.preventDefault();
-    setLoading(true);
+    setSubmitting(true);
+    setTxMessage('');
 
     try {
       const contract = getOrderingContract();
-      const account = await getCurrentAccount();
+      const account  = await getCurrentAccount();
 
-      // Get SPC address from deployment (supplier for pharmacies)
-      const spcAddress = addresses.RoleAccessControl; // Replace with actual SPC address
-      
+      if (!formData.medicineName || !formData.quantity) {
+        setTxMessage('❌ Please fill all required fields.');
+        return;
+      }
+
+      setTxMessage('⏳ Sending transaction...');
+
+      // placeOrder(address _supplier, string _medicineName, string _genericName,
+      //            uint256 _quantity, uint256 _unitPriceWei, string _urgencyReason)
       await contract.methods.placeOrder(
-        spcAddress, // Pharmacies order from SPC
+        SPC_ADDRESS,                                    // supplier = SPC
         formData.medicineName,
-        formData.genericName,
+        formData.genericName  || formData.medicineName, // fallback if blank
         Number(formData.quantity),
-        0,
-        formData.notes || "Standard procurement"
+        0,                                              // unitPriceWei = 0 (free demo)
+        formData.notes || 'Standard procurement'
       ).send({ from: account });
 
-      alert('✅ Order placed successfully! Waiting for AI risk evaluation...');
+      setTxMessage('✅ Order placed! Waiting for AI risk evaluation...');
       setShowOrderForm(false);
+      setFormData({ medicineName: '', genericName: '', quantity: '', notes: '' });
       loadOrders();
-      
-      setFormData({
-        medicineName: '',
-        quantity: '',
-        notes: ''
-      });
 
     } catch (error) {
       console.error('Error placing order:', error);
-      alert('❌ Failed to place order: ' + error.message);
+      const reason = error?.data?.message || error?.message || 'Unknown error';
+      setTxMessage('❌ Failed: ' + reason);
     } finally {
-      setLoading(false);
+      setSubmitting(false);
     }
   };
 
@@ -96,18 +104,25 @@ const PharmacyDashboard = () => {
     <div className="dashboard">
       <div className="dashboard-header">
         <h1>💊 Pharmacy Dashboard</h1>
-        <button 
-          onClick={() => setShowOrderForm(!showOrderForm)}
+        <button
+          onClick={() => { setShowOrderForm(!showOrderForm); setTxMessage(''); }}
           className="primary-button"
         >
           {showOrderForm ? '❌ Cancel' : '➕ Place New Order'}
         </button>
       </div>
 
+      {/* ── Order Form ── */}
       {showOrderForm && (
         <div className="card">
           <h2>Place Order to SPC</h2>
+          <p style={{ fontSize: '13px', color: '#636e72' }}>
+            Supplier: <strong>State Pharmaceuticals Corporation</strong><br />
+            <code style={{ fontSize: '11px' }}>{SPC_ADDRESS}</code>
+          </p>
+
           <form onSubmit={handlePlaceOrder} className="form">
+
             <div className="form-group">
               <label>Medicine Name *</label>
               <select
@@ -122,7 +137,19 @@ const PharmacyDashboard = () => {
                 <option value="Metformin 500mg">Metformin 500mg</option>
                 <option value="Amlodipine 5mg">Amlodipine 5mg</option>
                 <option value="Omeprazole 20mg">Omeprazole 20mg</option>
+                <option value="Insulin (Regular)">Insulin (Regular)</option>
               </select>
+            </div>
+
+            <div className="form-group">
+              <label>Generic Name</label>
+              <input
+                type="text"
+                name="genericName"
+                value={formData.genericName}
+                onChange={handleInputChange}
+                placeholder="e.g., Acetaminophen (leave blank to auto-fill)"
+              />
             </div>
 
             <div className="form-group">
@@ -139,7 +166,7 @@ const PharmacyDashboard = () => {
             </div>
 
             <div className="form-group">
-              <label>Notes (optional)</label>
+              <label>Urgency / Notes (optional)</label>
               <textarea
                 name="notes"
                 value={formData.notes}
@@ -149,15 +176,38 @@ const PharmacyDashboard = () => {
               />
             </div>
 
-            <button type="submit" className="submit-button" disabled={loading}>
-              {loading ? '⏳ Placing Order...' : '📦 Place Order to SPC'}
+            <button type="submit" className="submit-button" disabled={submitting}>
+              {submitting ? '⏳ Placing Order...' : '📦 Place Order to SPC'}
             </button>
           </form>
+
+          {txMessage && (
+            <div
+              className="info-box"
+              style={{
+                marginTop: '12px',
+                background: txMessage.startsWith('✅') ? '#e8f5e9'
+                          : txMessage.startsWith('⏳') ? '#fff3e0' : '#fdecea',
+                borderRadius: '8px',
+                padding: '12px',
+                fontSize: '14px'
+              }}
+            >
+              {txMessage}
+            </div>
+          )}
         </div>
       )}
 
+      {/* ── Orders Table ── */}
       <div className="card">
-        <h2>My Orders ({orders.length})</h2>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <h2>My Orders ({orders.length})</h2>
+          <button className="primary-button" onClick={loadOrders} style={{ fontSize: '12px', padding: '6px 14px' }}>
+            🔄 Refresh
+          </button>
+        </div>
+
         <div className="table-container">
           <table>
             <thead>
@@ -173,7 +223,7 @@ const PharmacyDashboard = () => {
             <tbody>
               {orders.length === 0 ? (
                 <tr>
-                  <td colSpan="6" style={{textAlign: 'center'}}>
+                  <td colSpan="6" style={{ textAlign: 'center', color: '#b2bec3' }}>
                     No orders placed yet
                   </td>
                 </tr>
@@ -182,15 +232,15 @@ const PharmacyDashboard = () => {
                   <tr key={order.id}>
                     <td>#{order.id}</td>
                     <td>{order.medicineName}</td>
-                    <td>{order.quantity}</td>
+                    <td>{order.quantity?.toString()}</td>
                     <td>
                       <span className={`status-badge status-${order.status}`}>
-                        {getOrderStatus(order.status)}
+                        {getOrderStatus(Number(order.status))}
                       </span>
                     </td>
                     <td>
-                      <span className={`risk-badge risk-${getRiskLevel(order.riskScore)}`}>
-                        {order.riskScore} / 1000
+                      <span className={`risk-badge risk-${getRiskLevel(Number(order.riskScore))}`}>
+                        {order.riskScore?.toString()} / 1000
                       </span>
                     </td>
                     <td>
@@ -208,6 +258,7 @@ const PharmacyDashboard = () => {
         </div>
       </div>
 
+      {/* ── Info Box ── */}
       <div className="info-box">
         <h3>ℹ️ Order Process</h3>
         <ol>

@@ -1,55 +1,129 @@
 [
   {
     "inputs": [
-      {"internalType": "string","name": "medicineName","type": "string"},
-      {"internalType": "uint256","name": "quantity","type": "uint256"},
-      {"internalType": "address","name": "supplierAddress","type": "address"},
-      {"internalType": "string","name": "notes","type": "string"}
+      {"internalType": "address", "name": "_supplier",      "type": "address"},
+      {"internalType": "string",  "name": "_medicineName",  "type": "string"},
+      {"internalType": "string",  "name": "_genericName",   "type": "string"},
+      {"internalType": "uint256", "name": "_quantity",      "type": "uint256"},
+      {"internalType": "uint256", "name": "_unitPriceWei",  "type": "uint256"},
+      {"internalType": "string",  "name": "_urgencyReason", "type": "string"}
     ],
     "name": "placeOrder",
-    "outputs": [{"internalType": "uint256","name": "","type": "uint256"}],
+    "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}],
     "stateMutability": "nonpayable",
     "type": "function"
   },
   {
-    "inputs": [{"internalType": "uint256","name": "orderId","type": "uint256"}],
+    "inputs": [{"internalType": "uint256", "name": "_oid", "type": "uint256"}],
     "name": "approveOrder",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
   },
   {
-    "inputs": [{"internalType": "uint256","name": "orderId","type": "uint256"}],
+    "inputs": [{"internalType": "uint256", "name": "_oid", "type": "uint256"}],
     "name": "approveEmergencyOrder",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
   },
   {
-    "inputs": [{"internalType": "uint256","name": "orderId","type": "uint256"}],
+    "inputs": [{"internalType": "uint256", "name": "_oid", "type": "uint256"}],
     "name": "fulfillOrder",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
   },
   {
-    "inputs": [{"internalType": "uint256","name": "orderId","type": "uint256"}],
+    "inputs": [
+      {"internalType": "uint256", "name": "_oid",    "type": "uint256"},
+      {"internalType": "string",  "name": "_reason", "type": "string"}
+    ],
+    "name": "rejectOrder",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [{"internalType": "uint256", "name": "_oid", "type": "uint256"}],
+    "name": "cancelOrder",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [{"internalType": "uint256", "name": "_oid", "type": "uint256"}],
     "name": "getOrder",
     "outputs": [
-      {"internalType": "address","name": "placer","type": "address"},
-      {"internalType": "string","name": "medicineName","type": "string"},
-      {"internalType": "uint256","name": "quantity","type": "uint256"},
-      {"internalType": "uint8","name": "status","type": "uint8"},
-      {"internalType": "uint16","name": "riskScore","type": "uint16"}
+      {
+        "components": [
+          {"internalType": "uint256",  "name": "orderId",         "type": "uint256"},
+          {"internalType": "address",  "name": "placer",          "type": "address"},
+          {"internalType": "address",  "name": "supplier",        "type": "address"},
+          {"internalType": "string",   "name": "medicineName",    "type": "string"},
+          {"internalType": "string",   "name": "genericName",     "type": "string"},
+          {"internalType": "uint256",  "name": "quantity",        "type": "uint256"},
+          {"internalType": "uint256",  "name": "unitPriceWei",    "type": "uint256"},
+          {"internalType": "uint256",  "name": "totalValueWei",   "type": "uint256"},
+          {"internalType": "uint8",    "name": "status",          "type": "uint8"},
+          {"internalType": "uint8",    "name": "path",            "type": "uint8"},
+          {"internalType": "uint256",  "name": "riskScore",       "type": "uint256"},
+          {"internalType": "string",   "name": "urgencyReason",   "type": "string"},
+          {"internalType": "uint256",  "name": "placedAt",        "type": "uint256"},
+          {"internalType": "uint256",  "name": "processedAt",     "type": "uint256"},
+          {"internalType": "address",  "name": "approvedBy",      "type": "address"},
+          {"internalType": "string",   "name": "rejectionReason", "type": "string"},
+          {"internalType": "bool",     "name": "isPaid",          "type": "bool"}
+        ],
+        "internalType": "struct OrderingContract.Order",
+        "name": "",
+        "type": "tuple"
+      }
     ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [{"internalType": "address", "name": "_p", "type": "address"}],
+    "name": "getOrdersByPlacer",
+    "outputs": [{"internalType": "uint256[]", "name": "", "type": "uint256[]"}],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [{"internalType": "address", "name": "_s", "type": "address"}],
+    "name": "getOrdersForSupplier",
+    "outputs": [{"internalType": "uint256[]", "name": "", "type": "uint256[]"}],
     "stateMutability": "view",
     "type": "function"
   },
   {
     "inputs": [],
     "name": "totalOrders",
-    "outputs": [{"internalType": "uint256","name": "","type": "uint256"}],
+    "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}],
     "stateMutability": "view",
     "type": "function"
+  },
+  {
+    "inputs": [
+      {"internalType": "uint256", "name": "_oid",       "type": "uint256"},
+      {"internalType": "uint256", "name": "_riskScore",  "type": "uint256"}
+    ],
+    "name": "setRiskScore",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {"indexed": true,  "internalType": "uint256", "name": "orderId",      "type": "uint256"},
+      {"indexed": true,  "internalType": "address", "name": "placer",       "type": "address"},
+      {"indexed": true,  "internalType": "address", "name": "supplier",     "type": "address"},
+      {"indexed": false, "internalType": "string",  "name": "medicineName", "type": "string"},
+      {"indexed": false, "internalType": "uint256", "name": "quantity",     "type": "uint256"}
+    ],
+    "name": "OrderPlaced",
+    "type": "event"
   }
 ]

@@ -1,0 +1,55 @@
+[
+  {
+    "inputs": [
+      {"internalType": "string","name": "medicineName","type": "string"},
+      {"internalType": "uint256","name": "quantity","type": "uint256"},
+      {"internalType": "address","name": "supplierAddress","type": "address"},
+      {"internalType": "string","name": "notes","type": "string"}
+    ],
+    "name": "placeOrder",
+    "outputs": [{"internalType": "uint256","name": "","type": "uint256"}],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [{"internalType": "uint256","name": "orderId","type": "uint256"}],
+    "name": "approveOrder",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [{"internalType": "uint256","name": "orderId","type": "uint256"}],
+    "name": "approveEmergencyOrder",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [{"internalType": "uint256","name": "orderId","type": "uint256"}],
+    "name": "fulfillOrder",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [{"internalType": "uint256","name": "orderId","type": "uint256"}],
+    "name": "getOrder",
+    "outputs": [
+      {"internalType": "address","name": "placer","type": "address"},
+      {"internalType": "string","name": "medicineName","type": "string"},
+      {"internalType": "uint256","name": "quantity","type": "uint256"},
+      {"internalType": "uint8","name": "status","type": "uint8"},
+      {"internalType": "uint16","name": "riskScore","type": "uint16"}
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "totalOrders",
+    "outputs": [{"internalType": "uint256","name": "","type": "uint256"}],
+    "stateMutability": "view",
+    "type": "function"
+  }
+]

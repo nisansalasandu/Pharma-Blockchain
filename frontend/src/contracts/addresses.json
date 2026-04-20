@@ -1,0 +1,9 @@
+{
+  "RoleAccessControl": "0x91F7e82f9415cf8878dD1b123C96C09F21B9c7E5",
+  "TraceabilityContract": "0x12c94a5697D694A31110AAa4Bee91b5b193c4cD1",
+  "OrderingContract": "0x118703B4481e92c020C2A6e9D5e259a826cA57a3",
+  "PredictiveAIOracle": "0xf4938804F386C0be428aAdB70f5B10da99927F56",
+  "ConsensusAdapter": "0x5B78FbfF9e9260E62Bbae453e39866d05eE8dF8d",
+  "networkId": 1337,
+  "rpcUrl": "http://127.0.0.1:7545"
+}

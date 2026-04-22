@@ -1,9 +1,9 @@
 {
-  "RoleAccessControl": "0x91F7e82f9415cf8878dD1b123C96C09F21B9c7E5",
-  "TraceabilityContract": "0x12c94a5697D694A31110AAa4Bee91b5b193c4cD1",
-  "OrderingContract": "0x118703B4481e92c020C2A6e9D5e259a826cA57a3",
-  "PredictiveAIOracle": "0xf4938804F386C0be428aAdB70f5B10da99927F56",
-  "ConsensusAdapter": "0x5B78FbfF9e9260E62Bbae453e39866d05eE8dF8d",
+  "RoleAccessControl": "0xc3AD08f71A8EB73f8E68b0F56581092b5befEc7F",
+  "TraceabilityContract": "0x50cA72eAF4FAE6eDA47c31A91D3936CD7189eC94",
+  "OrderingContract": "0xe5a0e6927832754ca7Bb12bF83eb01231e416328",
+  "PredictiveAIOracle": "0x8217002367288274318482b92A398b4B55c8fF72",
+  "ConsensusAdapter": "0xe8798aE89a5CaBC1107205e0e3BF0E21DC5b5a3f",
   "networkId": 1337,
   "rpcUrl": "http://127.0.0.1:7545"
 }

@@ -109,7 +109,7 @@ async function initBlockchain() {
     console.log("   ✅ Ganache is running");
   } catch {
     console.error("   ❌ Cannot connect to Ganache at", GANACHE_URL);
-    console.error("      Make sure Ganache is running on port 8545");
+    console.error("      Make sure Ganache is running on port 7545");
     process.exit(1);
   }
 

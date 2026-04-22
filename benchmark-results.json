@@ -1,0 +1,48 @@
+{
+  "deployTimeMs": 865,
+  "benchmarks": [
+    {
+      "name": "grantRole",
+      "avgMs": 58,
+      "avgGas": 159172,
+      "samples": 4
+    },
+    {
+      "name": "mintBatch",
+      "avgMs": 129,
+      "avgGas": 500205,
+      "samples": 5
+    },
+    {
+      "name": "transferCustody",
+      "avgMs": 105,
+      "avgGas": 237158,
+      "samples": 5
+    },
+    {
+      "name": "placeOrder",
+      "avgMs": 83,
+      "avgGas": 346495,
+      "samples": 5
+    },
+    {
+      "name": "submitPrediction",
+      "avgMs": 65,
+      "avgGas": 245534,
+      "samples": 5
+    },
+    {
+      "name": "pbftFullCycle",
+      "avgMs": 230,
+      "avgGas": "N/A (multi-tx)",
+      "samples": 3
+    }
+  ],
+  "throughput": {
+    "ordersPerMinute": 587,
+    "sampleSize": 10,
+    "elapsedMs": 1022
+  },
+  "timestamp": "2026-04-22T06:16:48.676Z",
+  "network": "ganache"
+}

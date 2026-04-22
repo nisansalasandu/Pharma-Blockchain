@@ -12,13 +12,38 @@ MODEL ARCHITECTURE:
   Outputs: [stockRisk, demandForecast, coldChainRisk, counterfeitRisk, overallRisk]
 
 INSTALL DEPENDENCIES:
-  pip install tensorflow numpy pandas scikit-learn requests
+  pip install -r ai_model/requirements.txt
 
 RUN:
   python ai_model/lstm_model.py
 
 The model trains on synthetic Sri Lankan pharmaceutical data,
 then sends predictions to oracle_server.js via HTTP POST.
+
+─── CHANGES FROM ORIGINAL ────────────────────────────────────────────────────
+
+FIX #21  (_prepare_sequences method, line ~200):
+  OLD: scores = compute_risk_scores(raw_row,
+                  {"baseDemand": df["weekly_demand"].mean(), "coldChain": False})
+  NEW: scores = compute_risk_scores(raw_row,
+                  {"baseDemand": df["weekly_demand"].mean(),
+                   "coldChain": medicine.get("coldChain", False)})
+
+  REASON: The original hardcoded coldChain=False for ALL medicines including
+  insulin (which has coldChain=True). This caused the model to train on incorrect
+  cold chain labels for temperature-sensitive drugs — insulin's cold chain risk
+  target was always 0.05 instead of 0.30. The training data generated correct
+  risk values per medicine but the label computation ignored the coldChain flag.
+
+  The fix passes the actual medicine dict to _prepare_sequences() so the correct
+  coldChain value is used when computing training targets. The train() method
+  now passes medicine to _prepare_sequences().
+
+  Changed method signatures:
+    _prepare_sequences(self, df)          → _prepare_sequences(self, df, medicine)
+    X, y = self._prepare_sequences(df)   → X, y = self._prepare_sequences(df, medicine)
+
+──────────────────────────────────────────────────────────────────────────────
 """
 
 import numpy as np
@@ -41,7 +66,7 @@ try:
 except ImportError:
     TF_AVAILABLE = False
     print("⚠️  TensorFlow not found — running in SIMULATION mode")
-    print("   Install: pip install tensorflow")
+    print("   Install: pip install -r ai_model/requirements.txt")
 
 # ── Configuration ─────────────────────────────────────────────────────────
 ORACLE_SERVER_URL = "http://localhost:3001/submit-prediction"
@@ -188,7 +213,23 @@ class LSTMRiskPredictor:
         model.compile(optimizer="adam", loss="mse", metrics=["mae"])
         return model
 
-    def _prepare_sequences(self, df: pd.DataFrame):
+    # ── FIX #21: Added `medicine` parameter ──────────────────────────────────
+    # ORIGINAL signature: def _prepare_sequences(self, df: pd.DataFrame):
+    # FIXED   signature: def _prepare_sequences(self, df: pd.DataFrame, medicine: dict):
+    #
+    # ORIGINAL line ~202:
+    #   scores = compute_risk_scores(raw_row,
+    #               {"baseDemand": df["weekly_demand"].mean(), "coldChain": False})
+    # FIXED:
+    #   scores = compute_risk_scores(raw_row,
+    #               {"baseDemand": df["weekly_demand"].mean(),
+    #                "coldChain": medicine.get("coldChain", False)})
+    #
+    # REASON: Hardcoding coldChain=False caused insulin (coldChain=True) to be
+    # trained with cold chain risk target of 0.05 instead of the correct 0.30.
+    # The model learned wrong labels for cold-chain-sensitive medicines.
+    # ─────────────────────────────────────────────────────────────────────────
+    def _prepare_sequences(self, df: pd.DataFrame, medicine: dict):  # CHANGED: added medicine param
         features = ["stock_level", "weekly_demand", "supply_received",
                     "stockout_flag", "price_index", "seasonal_factor"]
         data = df[features].values
@@ -199,7 +240,10 @@ class LSTMRiskPredictor:
             X.append(data[i - SEQUENCE_LENGTH:i])
             # Target: risk scores at prediction point
             raw_row = df.iloc[i + PREDICTION_WEEKS]
-            scores  = compute_risk_scores(raw_row, {"baseDemand": df["weekly_demand"].mean(), "coldChain": False})
+            scores  = compute_risk_scores(raw_row, {
+                "baseDemand": df["weekly_demand"].mean(),
+                "coldChain":  medicine.get("coldChain", False)   # CHANGED: was hardcoded False
+            })
             y.append([
                 scores["stockRisk"],
                 scores["demandForecast"] / 100000,  # normalize
@@ -212,7 +256,7 @@ class LSTMRiskPredictor:
     def train(self, medicine: dict):
         print(f"  🧠 Training LSTM for {medicine['name']}...")
         df      = generate_training_data(medicine, weeks=104)
-        X, y    = self._prepare_sequences(df)
+        X, y    = self._prepare_sequences(df, medicine)  # CHANGED: pass medicine
 
         if self.model is None:
             self.model = self._build_model((X.shape[1], X.shape[2]))

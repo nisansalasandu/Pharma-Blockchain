@@ -1,12 +1,12 @@
 {
   "network": "ganache",
   "chainId": "1337",
-  "deploymentBlock": 15,
-  "deploymentTime": "2026-04-17T06:48:24.449Z",
+  "deploymentBlock": 33,
+  "deploymentTime": "2026-04-22T05:39:46.991Z",
   "contracts": {
-    "RoleAccessControl": "0x91F7e82f9415cf8878dD1b123C96C09F21B9c7E5",
-    "TraceabilityContract": "0x12c94a5697D694A31110AAa4Bee91b5b193c4cD1",
-    "OrderingContract": "0x118703B4481e92c020C2A6e9D5e259a826cA57a3"
+    "RoleAccessControl": "0xc3AD08f71A8EB73f8E68b0F56581092b5befEc7F",
+    "TraceabilityContract": "0x50cA72eAF4FAE6eDA47c31A91D3936CD7189eC94",
+    "OrderingContract": "0xe5a0e6927832754ca7Bb12bF83eb01231e416328"
   },
   "accounts": {
     "NMRA": "0x5289D9eD381d2C71Aa3C3ed124683A4ea3835b45",

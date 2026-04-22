@@ -2,39 +2,69 @@ const hre = require("hardhat");
 const fs  = require("fs");
 
 /**
- * demo-scenario2.js  (gas-fixed version)
- * ────────────────────────────────────────
+ * demo-scenario2.js  (fixed — real PBFT consensus)
+ * ──────────────────────────────────────────────────
  * DEMO SCENARIO 2: Emergency Insulin Shortage (High Risk / PBFT Path)
  *
- * FIX: Every transaction now passes { gasLimit: 500000 }
+ * ─── CHANGES FROM ORIGINAL ──────────────────────────────────────────────────
+ *
+ * FIX #30 (Steps 5 & 6):
+ *   ORIGINAL Step 5: Skipped ConsensusAdapter entirely. Just printed:
+ *     "[PBFT committee: NMRA + SPC + MSD reached consensus off-chain]"
+ *     and called approveEmergencyOrder() directly without any PBFT contract calls.
+ *
+ *   FIXED Step 5: Calls the actual ConsensusAdapter contract:
+ *     1. consensus.switchToPBFT(orderId, 900, 0)  — NMRA triggers PBFT mode
+ *     2. consensus.castVote(eventId, true, dataHash) × 3  — all 3 validators vote
+ *     3. ordering.approveEmergencyOrder(orderId)   — NMRA approves post-consensus
+ *     4. consensus.restorePoA(eventId)             — system returns to normal
+ *
+ *   This makes the scenario consistent with demo-phase3.js and with the thesis
+ *   claim of "11 transactions" and "1,542ms completion time".
+ *
+ *   ALSO CHANGED:
+ *   - Reads deployment-phase3.json instead of deployment-phase2.json
+ *     because ConsensusAdapter is deployed in phase 3.
+ *   - Destructures `spc` signer (index 1) which was previously unused.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
  */
 
 // viaIR compiled contracts use more gas per tx — set explicit limit
 const GAS = { gasLimit: 4000000 };
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
 async function main() {
   console.log("\n" + "=".repeat(70));
   console.log("🚨 DEMO SCENARIO 2: Emergency Shortage (High Risk / PBFT Path)");
   console.log("=".repeat(70));
 
+  // ── CHANGED: read phase3 deployment (includes ConsensusAdapter) ───────────
   let info;
   try {
-    info = JSON.parse(fs.readFileSync("deployment-phase2.json"));
+    info = JSON.parse(fs.readFileSync("deployment-phase3.json"));
   } catch {
-    console.error("❌  deployment-phase2.json not found!");
-    console.error("    Run: npx hardhat run scripts/deploy-phase2.js --network ganache");
+    console.error("❌  deployment-phase3.json not found!");
+    console.error("    Run: npx hardhat run scripts/deploy-phase3.js --network ganache");
     process.exit(1);
   }
 
-  const { TraceabilityContract, OrderingContract } = info.contracts;
-  const [nmra, , msd, , mfg2, , , , hospital] = await hre.ethers.getSigners();
+  const { TraceabilityContract, OrderingContract, ConsensusAdapter } = info.contracts;
+
+  // ── CHANGED: destructure spc (index 1) — needed for PBFT vote ────────────
+  // ORIGINAL: const [nmra, , msd, , mfg2, , , , hospital] = ...
+  // FIXED:    const [nmra, spc, msd, , mfg2, , , , hospital] = ...
+  const [nmra, spc, msd, , mfg2, , , , hospital] = await hre.ethers.getSigners(); // CHANGED
 
   const traceability = await hre.ethers.getContractAt("TraceabilityContract", TraceabilityContract);
   const ordering     = await hre.ethers.getContractAt("OrderingContract",     OrderingContract);
+  const consensus    = await hre.ethers.getContractAt("ConsensusAdapter",     ConsensusAdapter); // ADDED
 
   console.log("\n📋 Participants:");
   console.log("  Manufacturer 2 (MFG2) :", mfg2.address);
   console.log("  MSD  (Supplier)       :", msd.address);
+  console.log("  SPC  (Validator)      :", spc.address);
   console.log("  Hospital (Buyer)      :", hospital.address);
   console.log("  NMRA (Emergency Auth) :", nmra.address);
 
@@ -131,19 +161,63 @@ async function main() {
   console.log("\n   🚨 RISK SCORE : 0.900 (CRITICAL — above 0.800 threshold)");
   console.log("   🚨 Path       : EMERGENCY (PBFT consensus required)");
   console.log("   🚨 Status     : EMERGENCY");
-  console.log("   📡 Consensus  : Switching PoA → PBFT...");
-  console.log("   📡 NMRA notified for emergency approval");
 
-  // ── STEP 5: NMRA approves emergency order ────────────────────────────────
+  // ── STEP 5: Full PBFT consensus round ─────────────────────────────────────
+  // ── FIX #30: Replaced fake console.log with real ConsensusAdapter calls ───
+  //
+  // ORIGINAL (fake):
+  //   console.log("   [PBFT committee: NMRA + SPC + MSD reached consensus off-chain]");
+  //   await (await ordering.connect(nmra).approveEmergencyOrder(orderId, GAS)).wait();
+  //
+  // FIXED: actual on-chain PBFT round using ConsensusAdapter contract
+  // ──────────────────────────────────────────────────────────────────────────
   console.log("\n" + "-".repeat(70));
-  console.log("👑 STEP 5: NMRA approves emergency order (post-PBFT)...");
-  console.log("   [PBFT committee: NMRA + SPC + MSD reached consensus off-chain]");
+  console.log("📡 STEP 5: PBFT Consensus Round — PoA → PBFT → PoA...");
 
+  // 5a: NMRA switches to PBFT mode
+  console.log("\n   5a. NMRA triggers PoA → PBFT switch...");
+  const switchTx  = await consensus.connect(nmra).switchToPBFT(orderId, 900, 0, GAS); // ADDED
+  await switchTx.wait();                                                                // ADDED
+  const eventId   = await consensus.getActiveEventId();                                // ADDED
+  const modeBefore = await consensus.getCurrentMode();                                 // ADDED
+  console.log("   ✅ Switched to PBFT mode. Event ID:", eventId.toString());
+  console.log("   ✅ Current mode:", modeBefore === 1n ? "PBFT 🔒" : "PoA");
+
+  // 5b: Prepare data hash for voting (same hash used by all validators)
+  const dataHash = hre.ethers.keccak256(                                               // ADDED
+    hre.ethers.toUtf8Bytes(`order-${orderId}-risk-900`)                               // ADDED
+  );                                                                                    // ADDED
+  console.log("\n   5b. PBFT Voting Round (Byzantine Fault Tolerant)...");
+  console.log("       Vote hash:", dataHash.slice(0, 20) + "...");
+
+  // 5c: All 3 validators cast votes
+  await sleep(500);
+  await (await consensus.connect(nmra).castVote(eventId, true, dataHash, GAS)).wait(); // ADDED
+  console.log("   ✅ NMRA voted: APPROVE  (1/3)");
+
+  await sleep(500);
+  await (await consensus.connect(spc).castVote(eventId, true, dataHash, GAS)).wait();  // ADDED
+  console.log("   ✅ SPC  voted: APPROVE  (2/3)");
+
+  await sleep(500);
+  await (await consensus.connect(msd).castVote(eventId, true, dataHash, GAS)).wait();  // ADDED
+  console.log("   ✅ MSD  voted: APPROVE  (3/3)");
+
+  const voteCount = await consensus.getVoteCount(eventId);                             // ADDED
+  console.log(`\n   📊 Final vote tally: ${voteCount}/3 APPROVE`);
+  console.log("   ✅ Byzantine consensus REACHED (≥ 2/3 required, 3/3 unanimous)");
+
+  // 5d: NMRA approves emergency order (post-PBFT)
+  console.log("\n   5d. NMRA approves emergency order (post-PBFT)...");
   await (await ordering.connect(nmra).approveEmergencyOrder(orderId, GAS)).wait();
-
   console.log("   ✅ Emergency order APPROVED by NMRA");
-  console.log("   ✅ Consensus   : PBFT (all validators agreed)");
-  console.log("   📡 Consensus   : Switching back PBFT → PoA");
+
+  // 5e: Restore to PoA
+  console.log("\n   5e. Restoring consensus to PoA...");
+  await (await consensus.connect(nmra).restorePoA(eventId, GAS)).wait();               // ADDED
+  const modeAfter = await consensus.getCurrentMode();                                  // ADDED
+  console.log("   ✅ Restored to:", modeAfter === 0n ? "PoA ✅" : "PBFT");
+  console.log("   ✅ Normal operations resumed");
 
   // ── STEP 6: MSD fulfills ─────────────────────────────────────────────────
   console.log("\n" + "-".repeat(70));
@@ -192,6 +266,7 @@ async function main() {
   const history    = await traceability.getCustodyHistory(tokenId);
   const finalOrder = await ordering.getOrder(orderId);
   const [total, fulfilled, emergency] = await ordering.getStats();
+  const totalSwitches = await consensus.totalSwitches();                               // ADDED
 
   const label = {
     [mfg2.address.toLowerCase()]:    "Manufacturer 2 (MFG2)",
@@ -220,7 +295,13 @@ async function main() {
   console.log("   Risk Score   : 0.900 (CRITICAL)");
   console.log("   Path         : EMERGENCY (PBFT)");
   console.log("   Status       : FULFILLED ✅");
-  console.log("   Approved by  : NMRA (Emergency override)");
+  console.log("   Approved by  : NMRA (post-PBFT consensus)");
+
+  console.log("\n📡 CONSENSUS SUMMARY:");                                              // ADDED
+  console.log("   PBFT Event ID     :", eventId.toString());                          // ADDED
+  console.log("   Validator votes   : 3/3 APPROVE (unanimous)");                     // ADDED
+  console.log("   Total Switches    :", totalSwitches.toString());                    // ADDED
+  console.log("   Final mode        : PoA (restored) ✅");                           // ADDED
 
   console.log("\n📊 NETWORK STATISTICS:");
   console.log("   Total Orders     :", total.toString());
@@ -229,12 +310,13 @@ async function main() {
 
   console.log("\n🎓 KEY RESEARCH CONTRIBUTIONS DEMONSTRATED:");
   console.log("   ✅ AI risk score > 0.8 → EMERGENCY path triggered");
-  console.log("   ✅ Consensus switched PoA → PBFT for critical order");
-  console.log("   ✅ NMRA regulatory override on emergency orders");
+  console.log("   ✅ ConsensusAdapter.switchToPBFT() called on-chain");  // CHANGED
+  console.log("   ✅ All 3 validators (NMRA, SPC, MSD) voted APPROVE on-chain"); // CHANGED
+  console.log("   ✅ Byzantine consensus: 3/3 votes, fault-tolerant (≥2/3 required)"); // ADDED
+  console.log("   ✅ NMRA regulatory approval after PBFT consensus");
+  console.log("   ✅ PoA restored after emergency — ConsensusAdapter.restorePoA()"); // ADDED
   console.log("   ✅ Cold-chain violation (25°C) correctly blocked on-chain");
   console.log("   ✅ Full immutable audit trail recorded");
-
-  
 }
 
 main()

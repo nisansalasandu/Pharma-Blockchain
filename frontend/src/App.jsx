@@ -20,11 +20,11 @@ import { ethers } from "ethers";
 // CONTRACT ADDRESSES (from your deployment-phase3.json)
 // ─────────────────────────────────────────────────────────────────────────────
 const ADDRESSES = {
-  RoleAccessControl:    "0x91F7e82f9415cf8878dD1b123C96C09F21B9c7E5",
-  TraceabilityContract: "0x12c94a5697D694A31110AAa4Bee91b5b193c4cD1",
-  OrderingContract:     "0x118703B4481e92c020C2A6e9D5e259a826cA57a3",
-  PredictiveAIOracle:   "0xf4938804F386C0be428aAdB70f5B10da99927F56",
-  ConsensusAdapter:     "0x5B78FbfF9e9260E62Bbae453e39866d05eE8dF8d",
+  RoleAccessControl:    "0xc3AD08f71A8EB73f8E68b0F56581092b5befEc7F",
+  TraceabilityContract: "0x50cA72eAF4FAE6eDA47c31A91D3936CD7189eC94",
+  OrderingContract:     "0xe5a0e6927832754ca7Bb12bF83eb01231e416328",
+  PredictiveAIOracle:   "0x8217002367288274318482b92A398b4B55c8fF72",
+  ConsensusAdapter:     "0xe8798aE89a5CaBC1107205e0e3BF0E21DC5b5a3f",
 };
 
 // Known accounts from deployment
@@ -71,7 +71,7 @@ const TC_ABI = [
   "function mintBatch((string,string,string,uint256,uint256,bool,int256,int256,string,string)) returns (uint256)",
   "function transferCustody(uint256,address,string,int256,string)",
   "function recallBatch(uint256,string)",
-  "function verifyByQR(bytes32) returns (tuple(uint256,bool,string,string,uint8,uint256))",
+  "function verifyByQR(bytes32) view returns (tuple(uint256,bool,string,string,uint8,uint256))",
   "function getBatch(uint256) view returns (tuple(uint256,string,string,string,uint256,uint256,uint256,address,address,uint8,bool,int256,int256,bytes32,string,bool))",
   "function getCustodyHistory(uint256) view returns (tuple(address,address,uint256,string,int256,string)[])",
   "function getHolderBatches(address) view returns (uint256[])",
@@ -399,8 +399,8 @@ function EmptyState({ icon = "📭", text = "Nothing here yet" }) {
 // NAV CONFIG PER ROLE
 // ─────────────────────────────────────────────────────────────────────────────
 const NAV_CONFIG = {
-  NMRA:         [{ id:"overview",icon:"📊",label:"Overview"},{ id:"grantRole",icon:"👤",label:"Grant Role"},{ id:"revoke",icon:"🚫",label:"Revoke Member"},{ id:"license",icon:"📜",label:"Licenses"},{ id:"recall",icon:"⚠️",label:"Recall Batch"},{ id:"consensus",icon:"🔐",label:"Consensus Mode"},{ id:"orders",icon:"📋",label:"All Orders"},{ id:"emergency",icon:"🚨",label:"Emergency Orders"}],
-  SPC:          [{ id:"overview",icon:"📊",label:"Overview"},{ id:"orders",icon:"📋",label:"Pending Orders"},{ id:"fulfill",icon:"🚚",label:"Fulfill Orders"},{ id:"rejected",icon:"❌",label:"Reject Orders"}],
+  NMRA:         [{ id:"overview",icon:"📊",label:"Overview"},{ id:"grantRole",icon:"👤",label:"Grant Role"},{ id:"revoke",icon:"🚫",label:"Revoke Member"},{ id:"license",icon:"📜",label:"Licenses"},{ id:"recall",icon:"⚠️",label:"Recall Batch"},{ id:"consensus",icon:"🔐",label:"Consensus Mode"},{ id:"orders",icon:"📋",label:"All Orders"},{ id:"emergency",icon:"🚨",label:"Emergency Orders"},{ id:"ai",icon:"🧠",label:"AI Monitor"}],  // FIX #37: ADDED ai tab
+  SPC:          [{ id:"overview",icon:"📊",label:"Overview"},{ id:"orders",icon:"📋",label:"Pending Orders"},{ id:"fulfill",icon:"🚚",label:"Fulfill Orders"},{ id:"rejected",icon:"❌",label:"Reject Orders"},{ id:"pbft",icon:"🗳️",label:"PBFT Vote"}],  // FIX #16: ADDED pbft tab
   MSD:          [{ id:"overview",icon:"📊",label:"Overview"},{ id:"emergency",icon:"🚨",label:"Emergency Orders"},{ id:"hospital",icon:"🏥",label:"Hospital Orders"},{ id:"fulfill",icon:"🚚",label:"Fulfill Orders"}],
   MANUFACTURER: [{ id:"overview",icon:"📊",label:"Overview"},{ id:"mint",icon:"➕",label:"Mint Batch"},{ id:"batches",icon:"📦",label:"My Batches"},{ id:"transfer",icon:"📤",label:"Transfer Custody"}],
   IMPORTER:     [{ id:"overview",icon:"📊",label:"Overview"},{ id:"mint",icon:"➕",label:"Mint Batch"},{ id:"batches",icon:"📦",label:"My Batches"},{ id:"transfer",icon:"📤",label:"Transfer Custody"}],
@@ -466,6 +466,26 @@ function LoginPage({ onLogin }) {
     } finally { setLoading(false); }
   }
 
+  // ── FIX #3: Patient light-client — read-only provider, no MetaMask ──────
+  async function handlePatientAccess() {
+    setLoading(true); setErr("");
+    try {
+      const provider = new ethers.JsonRpcProvider("http://127.0.0.1:7545");
+      // Random throwaway wallet — used only for view calls, never signs real txs
+      const signer = ethers.Wallet.createRandom().connect(provider);
+      onLogin({
+        account: "patient-guest",
+        role: "PATIENT",
+        orgName: "Medicine Verification Portal",
+        provider,
+        signer,
+      });
+    } catch (e) {
+      setErr("Cannot connect to Ganache. Make sure it is running on port 7545.");
+    }
+    setLoading(false);
+  }
+
   return (
     <div className="login-shell">
       <div className="login-box">
@@ -502,6 +522,21 @@ function LoginPage({ onLogin }) {
           {loading ? "⏳ Verifying…" : account ? "🚀 Enter Dashboard" : "🦊 Connect MetaMask"}
         </button>
 
+        {/* ── FIX #3: Patient light-client login — no MetaMask wallet needed ── */}
+        <div style={{ marginTop: 12 }}>
+          <div style={{ fontSize: 11, color: "var(--text3)", textAlign: "center", marginBottom: 8 }}>
+            Just want to verify a medicine?
+          </div>
+          <button
+            className="btn btn-ghost"
+            style={{ width: "100%", justifyContent: "center" }}
+            onClick={handlePatientAccess}
+            disabled={loading}
+          >
+            🔍 Verify Medicine as Patient (no wallet needed)
+          </button>
+        </div>
+
         {err && <div className="alert alert-danger" style={{ marginTop: 14 }}>⚠️ {err}</div>}
 
         <div style={{ marginTop: 20 }}>
@@ -533,7 +568,8 @@ function Sidebar({ role, orgName, account, activeTab, onTabChange, onLogout }) {
       <div className="sidebar-user">
         <div className="user-role" style={{ color }}>{role}</div>
         <div className="user-name">{orgName || "Unknown"}</div>
-        <div className="user-addr">{fmtAddr(account)}</div>
+        {/* FIX #3: patient-guest has no real wallet address */}
+        <div className="user-addr">{account === "patient-guest" ? "Guest Access" : fmtAddr(account)}</div>
       </div>
       <div className="sidebar-nav">
         <div className="nav-section">Navigation</div>
@@ -569,7 +605,11 @@ function NMRADashboard({ signer, account }) {
   const [totalSwitches, setTotalSwitches] = useState(0);
   const [txMsg, setTxMsg] = useState("");
   const [loading, setLoading] = useState(false);
-  const { rac, tc, oc, ca } = useContracts(signer);
+  // ── FIX #37: added oracle contract for AI predictions panel ──────────
+  const { rac, tc, oc, ca, oracle } = useContracts(signer);  // CHANGED: added oracle
+
+  // ── FIX #37: AI predictions state ─────────────────────────────────────
+  const [predictions, setPredictions] = useState([]);
 
   const [grantForm, setGrantForm] = useState({ address: "", roleKey: "ROLE_MANUFACTURER", orgName: "", expiry: "0" });
   const [revokeAddr, setRevokeAddr] = useState("");
@@ -609,6 +649,35 @@ function NMRADashboard({ signer, account }) {
   }
 
   useEffect(() => { if (tab === "orders" || tab === "emergency") loadOrders(); }, [tab]);
+  useEffect(() => { if (tab === "ai") loadPredictions(); }, [tab]);  // FIX #37: ADDED
+
+  // ── FIX #37: Load AI predictions from PredictiveAIOracle ───────────────
+  async function loadPredictions() {
+    const TRACKED = [
+      "paracetamol","amoxicillin","metformin","insulin",
+      "amlodipine","atorvastatin","salbutamol","omeprazole"
+    ];
+    try {
+      const results = await Promise.all(
+        TRACKED.map(async (name) => {
+          try {
+            const p = await oracle.getPrediction(name);
+            return {
+              name,
+              stock:       Number(p[1]),
+              demand:      Number(p[2]),
+              coldChain:   Number(p[3]),
+              counterfeit: Number(p[4]),
+              overall:     Number(p[5]),
+              timestamp:   Number(p[6]),
+              isValid:     p[7],
+            };
+          } catch { return { name, isValid: false, overall: 0 }; }
+        })
+      );
+      setPredictions(results.filter(p => p.isValid));
+    } catch (e) { console.error("Prediction load failed:", e); }
+  }
 
   async function handleGrantRole() {
     setLoading(true); setTxMsg("⏳ Granting role…");
@@ -980,6 +1049,74 @@ function NMRADashboard({ signer, account }) {
             </div>
           )}
 
+          {/* ── FIX #37: ADDED — AI Risk Monitor tab ───────────────────────── */}
+          {tab === "ai" && (
+            <>
+              <div className="card">
+                <div className="card-header">
+                  <div className="card-title">🧠 AI Risk Monitor (LSTM Oracle)</div>
+                  <button className="btn btn-ghost btn-sm" onClick={loadPredictions}>🔄 Refresh</button>
+                </div>
+                <div className="alert alert-info" style={{ marginBottom: 16 }}>
+                  Live risk scores from the LSTM model submitted to PredictiveAIOracle.
+                  Scores above <strong>800/1000</strong> automatically route new orders
+                  to PBFT consensus. Start the oracle server to populate this panel.
+                </div>
+                {predictions.length === 0 ? (
+                  <div className="empty-state">
+                    <div className="empty-icon">🤖</div>
+                    <div className="empty-text">No predictions yet.</div>
+                    <div style={{ fontSize: 12, color: "var(--text3)", marginTop: 8 }}>
+                      Start the oracle: <code>node pbft_coordinator/oracle_server.js</code><br />
+                      Run the LSTM:     <code>python ai_model/lstm_model.py</code>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="table-wrap">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Medicine</th>
+                          <th>Overall Risk</th>
+                          <th>Stock Risk</th>
+                          <th>Demand Forecast</th>
+                          <th>Cold Chain</th>
+                          <th>Counterfeit</th>
+                          <th>Order Routing</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {predictions.map((p, i) => {
+                          const col = p.overall > 800 ? "#ef4444" : p.overall > 400 ? "#f59e0b" : "#10b981";
+                          return (
+                            <tr key={i}>
+                              <td style={{ fontWeight: 600, textTransform: "capitalize" }}>{p.name}</td>
+                              <td>
+                                <span style={{ color: col, fontWeight: 700 }}>{p.overall}/1000</span>
+                                <div style={{ height: 4, background: "var(--bg4)", borderRadius: 2, width: 80, marginTop: 4 }}>
+                                  <div style={{ height: 4, background: col, borderRadius: 2, width: `${p.overall / 10}%` }} />
+                                </div>
+                              </td>
+                              <td>{p.stock}/1000</td>
+                              <td>{p.demand?.toLocaleString()} units/wk</td>
+                              <td>{p.coldChain}/1000</td>
+                              <td>{p.counterfeit}/1000</td>
+                              <td>
+                                <Badge color={p.overall > 800 ? "#ef4444" : "#10b981"}>
+                                  {p.overall > 800 ? "⚡ PBFT" : "⚙️ PoA"}
+                                </Badge>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+
         </div>
       </div>
     </div>
@@ -1242,7 +1379,9 @@ function SPCDashboard({ signer, account }) {
   const [stats, setStats] = useState({ total: 0, fulfilled: 0, emergency: 0 });
   const [txMsg, setTxMsg] = useState("");
   const [loading, setLoading] = useState(false);
-  const { oc } = useContracts(signer);
+  // ── FIX #16: added ca (ConsensusAdapter) for PBFT voting ──────────────
+  const { oc, ca } = useContracts(signer);  // CHANGED: was { oc }
+  const [castVoteForm, setCastVoteForm] = useState({ eventId: "" }); // FIX #16: ADDED
 
   useEffect(() => { loadAll(); }, [tab]);
 
@@ -1287,6 +1426,18 @@ function SPCDashboard({ signer, account }) {
       await tx.wait();
       setTxMsg("✅ Order rejected.");
       loadAll();
+    } catch (e) { setTxMsg("❌ " + (e.reason || e.message)); }
+    setLoading(false);
+  }
+
+  // ── FIX #16: ADDED — SPC PBFT vote handler ──────────────────────────────
+  async function handleVote(approve) {
+    setLoading(true); setTxMsg("⏳ Casting SPC PBFT vote…");
+    try {
+      const dataHash = ethers.id(`spc-vote-${castVoteForm.eventId}-${account}`);
+      const tx = await ca.castVote(Number(castVoteForm.eventId), approve, dataHash);
+      await tx.wait();
+      setTxMsg(`✅ SPC vote cast: ${approve ? "APPROVE ✓" : "REJECT ✗"}`);
     } catch (e) { setTxMsg("❌ " + (e.reason || e.message)); }
     setLoading(false);
   }
@@ -1350,6 +1501,39 @@ function SPCDashboard({ signer, account }) {
               <TxStatus msg={txMsg} />
             </div>
           )}
+
+          {/* ── FIX #16: ADDED — SPC PBFT Voting tab ──────────────────── */}
+          {tab === "pbft" && (
+            <div className="card">
+              <div className="card-header">
+                <div className="card-title">🗳️ PBFT Validator Vote</div>
+              </div>
+              <div className="alert alert-info" style={{ marginBottom: 16 }}>
+                As SPC (Validator #2), you must cast your vote during an active PBFT
+                consensus round. Enter the active Event ID shown on the NMRA dashboard
+                and vote to approve or reject the emergency order.
+              </div>
+              <div style={{ display: "flex", gap: 10, marginBottom: 12, alignItems: "flex-end" }}>
+                <div style={{ flex: 1 }}>
+                  <label className="form-label">Active Consensus Event ID</label>
+                  <input
+                    type="number"
+                    placeholder="Event ID (from NMRA dashboard)"
+                    value={castVoteForm.eventId}
+                    onChange={e => setCastVoteForm({ eventId: e.target.value })}
+                  />
+                </div>
+                <button className="btn btn-success" onClick={() => handleVote(true)} disabled={loading || !castVoteForm.eventId}>
+                  ✅ Vote APPROVE
+                </button>
+                <button className="btn btn-danger" onClick={() => handleVote(false)} disabled={loading || !castVoteForm.eventId}>
+                  ❌ Vote REJECT
+                </button>
+              </div>
+              <TxStatus msg={txMsg} />
+            </div>
+          )}
+
         </div>
       </div>
     </div>
@@ -1582,7 +1766,7 @@ function PharmacyHospitalDashboard({ signer, account, role }) {
     setLoading(true); setVerifyResult(null);
     try {
       const qrHash = ethers.id(verifyInput);
-      const result = await tc.verifyByQR.staticCall(qrHash);
+      const result = await tc.verifyByQR(qrHash);
       setVerifyResult({
         tokenId: Number(result[0]),
         isAuthentic: result[1],
@@ -2026,7 +2210,7 @@ function PatientDashboard({ signer, account }) {
     setLoading(true); setVerifyResult(null);
     try {
       const qrHash = ethers.id(verifyInput);
-      const result = await tc.verifyByQR.staticCall(qrHash);
+      const result = await tc.verifyByQR(qrHash);
       const res = {
         tokenId: Number(result[0]),
         isAuthentic: result[1],

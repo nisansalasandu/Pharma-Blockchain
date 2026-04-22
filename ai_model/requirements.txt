@@ -1,0 +1,19 @@
+# ai_model/requirements.txt
+# ─────────────────────────────────────────────────────────────
+# FIX #22: This file was empty in the original project.
+#          Added all dependencies used by lstm_model.py.
+# ─────────────────────────────────────────────────────────────
+#
+# Install all dependencies:
+#   pip install -r ai_model/requirements.txt
+#
+# For Apple Silicon (M1/M2) replace tensorflow with:
+#   pip install tensorflow-macos tensorflow-metal
+#
+
+tensorflow==2.14.0
+numpy>=1.24.0
+pandas>=2.0.0
+scikit-learn>=1.3.0
+requests>=2.31.0
+flask>=3.0.0

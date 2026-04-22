@@ -12,6 +12,28 @@ import "./RoleAccessControl.sol";
  *   - transferCustody splits logic into _updateStatus() and _recordCustody()
  *   - verifyByQR returns a simple struct instead of 6 bare values
  *   - No viaIR required
+ *
+ * ─── CHANGES FROM ORIGINAL ───────────────────────────────────────────────────
+ *
+ * FIX #1  (Line ~163 in mintBatch):
+ *   OLD: bytes32 qrHash = keccak256(abi.encodePacked(p.qrPayload, tid, msg.sender));
+ *   NEW: bytes32 qrHash = keccak256(abi.encodePacked(p.qrPayload));
+ *   REASON: The frontend uses ethers.id(qrPayloadString) = keccak256(utf8(string))
+ *   which is equivalent to keccak256(abi.encodePacked(string)). Adding tid and
+ *   msg.sender to the hash made it impossible to verify from the frontend without
+ *   knowing those values at scan time. Simplified hash matches ethers.id() exactly.
+ *
+ * FIX #4  (verifyByQR function):
+ *   OLD: function verifyByQR(bytes32 _qrHash) external returns (VerifyResult memory result)
+ *   NEW: function verifyByQR(bytes32 _qrHash) external view returns (VerifyResult memory result)
+ *   REASON: The function was non-view (state-changing) only because it emitted an event,
+ *   but the frontend called it via staticCall which never records the event on-chain.
+ *   Making it view allows patients (light clients with no ETH) to call it for free
+ *   without MetaMask signing. The QRVerified event is removed from this function;
+ *   a separate logVerification() function is added for registered users who want
+ *   the on-chain audit trail.
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
  */
 contract TraceabilityContract {
 
@@ -98,6 +120,7 @@ contract TraceabilityContract {
     event CustodyTransferred(uint256 indexed tokenId, address indexed from,
                              address indexed to, string location, uint256 timestamp);
     event BatchRecalled(uint256 indexed tokenId, string reason, address recalledBy);
+    // FIX #4: QRVerified is now emitted only from logVerification(), not verifyByQR()
     event QRVerified(uint256 indexed tokenId, address verifier, bool isAuthentic);
 
     // ─── MODIFIERS ────────────────────────────────────────────────────────────
@@ -148,6 +171,10 @@ contract TraceabilityContract {
      *     minTemp: 0, maxTemp: 3500,
      *     qrPayload: "PCM-2024-001:MFG1", ipfsCert: "ipfs://Qm..."
      *   });
+     *
+     * Patient verification (frontend):
+     *   const qrHash = ethers.id("PCM-2024-001:MFG1");  // keccak256 of the string
+     *   const result = await tc.verifyByQR(qrHash);      // free view call, no gas
      */
     function mintBatch(BatchParams calldata p)
         external
@@ -159,8 +186,20 @@ contract TraceabilityContract {
         require(p.expiryDate > block.timestamp,   "TC: expiry in past");
 
         _tokenCounter++;
-        uint256 tid    = _tokenCounter;
-        bytes32 qrHash = keccak256(abi.encodePacked(p.qrPayload, tid, msg.sender));
+        uint256 tid = _tokenCounter;
+
+        // ── FIX #1: Hash only qrPayload string ────────────────────────────
+        // ORIGINAL: keccak256(abi.encodePacked(p.qrPayload, tid, msg.sender))
+        // FIXED:    keccak256(abi.encodePacked(p.qrPayload))
+        //
+        // This matches ethers.id(qrPayloadString) used in the frontend.
+        // ethers.id(s) = keccak256(toUtf8Bytes(s)) = keccak256(abi.encodePacked(s))
+        // The previous version included tid and msg.sender as extra salt, making
+        // it impossible for the patient dashboard to reconstruct the hash from
+        // the QR string alone. The qrPayload itself (e.g. "PCM-2024-001:MFG1")
+        // is unique per batch by convention, so no collision risk.
+        // ──────────────────────────────────────────────────────────────────
+        bytes32 qrHash = keccak256(abi.encodePacked(p.qrPayload)); // CHANGED
 
         // Write batch to storage (avoids local Batch variable = 1 less stack slot)
         batches[tid].tokenId           = tid;
@@ -278,18 +317,38 @@ contract TraceabilityContract {
     // ─── QR VERIFICATION ──────────────────────────────────────────────────────
 
     /**
-     * @dev Verify a batch by its QR hash. Returns a struct (not 6 bare values)
-     *      so the caller's stack is not burdened by multiple return slots.
+     * @dev Verify a batch by its QR hash. Pure read — no gas, no wallet needed.
      *
-     * JS call:
-     *   const result = await traceability.verifyByQR(qrHash);
-     *   console.log(result.isAuthentic);   // true/false
+     * ── FIX #4: Changed from `external` (state-changing) to `external view` ──
+     * ORIGINAL: function verifyByQR(bytes32 _qrHash) external returns (...)
+     * FIXED:    function verifyByQR(bytes32 _qrHash) external view returns (...)
+     *
+     * The original emitted QRVerified inside this function, requiring a signed
+     * transaction. The frontend called it with staticCall, so the event was NEVER
+     * actually recorded on-chain — defeating the purpose. Making this view means:
+     *   1. Patients with no ETH / no MetaMask can call it for free.
+     *   2. The read-only provider in PatientDashboard works without signing.
+     *   3. The result is identical — no state was ever changed by the original.
+     *
+     * For on-chain audit trail, call logVerification() separately (registered
+     * users only, e.g. pharmacy dispensing to patient).
+     *
+     * JS call (patient — no wallet):
+     *   const provider = new ethers.JsonRpcProvider("http://127.0.0.1:7545");
+     *   const tc = new ethers.Contract(addr, TC_ABI, provider);
+     *   const qrHash = ethers.id("PCM-2024-001:MFG1");
+     *   const result = await tc.verifyByQR(qrHash);   // free, no signing
+     * ─────────────────────────────────────────────────────────────────────────
      */
-    function verifyByQR(bytes32 _qrHash) external returns (VerifyResult memory result) {
+    function verifyByQR(bytes32 _qrHash)   // CHANGED: added `view`
+        external
+        view                                // CHANGED: was non-view
+        returns (VerifyResult memory result)
+    {
         result.tokenId = qrHashToBatch[_qrHash];
 
         if (result.tokenId == 0) {
-            emit QRVerified(0, msg.sender, false);
+            // CHANGED: removed `emit QRVerified(0, msg.sender, false);`
             return result; // all fields zero/false/empty
         }
 
@@ -300,7 +359,22 @@ contract TraceabilityContract {
         result.status       = batches[result.tokenId].status;
         result.expiryDate   = batches[result.tokenId].expiryDate;
 
-        emit QRVerified(result.tokenId, msg.sender, result.isAuthentic);
+        // CHANGED: removed `emit QRVerified(result.tokenId, msg.sender, result.isAuthentic);`
+        // Use logVerification() below for on-chain audit when dispensing.
+    }
+
+    /**
+     * @dev FIX #4 ADDITION: Separate function for on-chain verification audit trail.
+     *      Called by registered users (pharmacy/hospital) when dispensing to patient.
+     *      This is a state-changing transaction that emits the QRVerified event.
+     *
+     *      Patients do NOT need to call this — verifyByQR() above is free.
+     */
+    function logVerification(bytes32 _qrHash) external batchExists(qrHashToBatch[_qrHash]) {
+        uint256 tokenId   = qrHashToBatch[_qrHash];
+        bool isAuthentic  = !batches[tokenId].isRecalled &&
+                             batches[tokenId].expiryDate > block.timestamp;
+        emit QRVerified(tokenId, msg.sender, isAuthentic);
     }
 
     // ─── READ FUNCTIONS ───────────────────────────────────────────────────────

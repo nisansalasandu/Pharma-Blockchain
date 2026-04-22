@@ -1124,7 +1124,7 @@ This system was developed as a BSc (Honours) final year research project at the 
 
 ## 📄 License
 
-This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.
+.......
 
 ---
 

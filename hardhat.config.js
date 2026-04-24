@@ -19,7 +19,7 @@ module.exports = {
       url: "http://127.0.0.1:7545",
       chainId: 1337,
       accounts: {
-        mnemonic: "tackle citizen maze bottom ignore lumber fold sleep manage possible exist hen", // Replace with actual mnemonic
+        mnemonic: "Paste Ganache mnemonic here", // Replace with actual mnemonic
         path: "m/44'/60'/0'/0",
         initialIndex: 0,
         count: 10,

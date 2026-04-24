@@ -8,13 +8,13 @@
 [![ethers.js](https://img.shields.io/badge/ethers.js-6.9.0-2535a0?style=for-the-badge)](https://ethers.org/)
 [![Python](https://img.shields.io/badge/Python-3.11-3776ab?style=for-the-badge&logo=python)](https://python.org/)
 [![TensorFlow](https://img.shields.io/badge/TensorFlow-2.14.0-ff6f00?style=for-the-badge&logo=tensorflow)](https://tensorflow.org/)
-[![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)](LICENSE)
+
 
 **Bachelor of Science Honours in IT and Management**  
 Information Technology Service Center · Faculty of Science · University of Colombo  
-*Supervisor: Dr. Prabhath Liyanage · March 2026*
+*Supervisor: Dr. Prabhath Liyanage · 2025/2026*
 
-**Author: Ruwan Pathiranage Sanduni Nisansala (s16162)**
+**Author: Ruwan Pathiranage Sanduni Nisansala**
 
 </div>
 

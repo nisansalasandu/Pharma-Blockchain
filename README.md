@@ -542,7 +542,7 @@ Ganache must be configured with the **exact mnemonic** that matches the project'
 - Block Time: 1 second
 
 **ACCOUNTS & KEYS tab:**
-- Mnemonic: `tackle citizen maze bottom ignore lumber fold sleep manage possible exist hen`
+- Mnemonic: `Ganache Mnemonic Here`
 - Total Accounts to Generate: **`10`**
 - Default Ether: `1000`
 
@@ -967,7 +967,7 @@ npx hardhat run scripts/benchmark.js --network ganache
 | 9 | **TRANSPORTER** | `0x1e4fF0820e498392EBB78f817e96D2c8b6D6F2af` | MediCold Transport Solutions |
 | — | **PATIENT** | No wallet needed | Medicine Verification Portal |
 
-**Mnemonic:** `tackle citizen maze bottom ignore lumber fold sleep manage possible exist hen`
+**Mnemonic:** `PASTE YOUR GANACHE MNEMONIC HERE`
 
 ---
 
@@ -1112,7 +1112,7 @@ This system was developed as a BSc (Honours) final year research project at the 
 > *"AI-Powered Predictive Blockchain Architecture for Proactive and Locally-Adaptive Pharmaceutical Supply Chain Management in Sri Lanka"*  
 > Ruwan Pathiranage Sanduni Nisansala (s16162)  
 > Supervisor: Dr. Prabhath Liyanage  
-> Submitted: 15 March 2026
+> Submitted: 23 April 2026
 
 **Research Questions Addressed:**
 1. How does blockchain technology enhance pharmaceutical traceability in developing nations?
@@ -1131,6 +1131,6 @@ This system was developed as a BSc (Honours) final year research project at the 
 <div align="center">
 
 **University of Colombo · Faculty of Science · ITSC · 2026**  
-*Ruwan Pathiranage Sanduni Nisansala (s16162)*
+*Ruwan Pathiranage Sanduni Nisansala*
 
 </div>
